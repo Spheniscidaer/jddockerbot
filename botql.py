@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 _JdDir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 _ConfigDir = _JdDir + '/config'
 _ScriptsDir = _JdDir + '/scripts'
+_DiyScripts = _JdDir + '/diyscripts'
 _LogDir = _JdDir + '/log'
 _shortcut = _ConfigDir + '/shortcut.list'
 _bot = _ConfigDir + '/bot.json'
@@ -39,7 +40,7 @@ TOKEN = bot['bot_token']
 api_id = bot['api_id']
 api_hash = bot['api_hash']
 proxystart = bot['proxy']
-if 'proxy_user' in bot.keys() and bot['proxy_user'] != "代理的username,有则填写，无则不用动":
+if 'proxy_user' in bot.keys() and bot['proxy_user'] != "代理的username,有则填写，无则不用动" :
     proxy = {
         'proxy_type': bot['proxy_type'],
         'addr':  bot['proxy_add'],
@@ -321,7 +322,7 @@ async def nodebtn(conv, SENDER, path, msg, page, filelist):
                 newmarkup.append(mybtn)
         else:
             if path == '/jd':
-                dir = ['scripts', 'own']
+                dir = ['scripts', 'diyscripts']
             else:
                 dir = os.listdir(path)
                 dir = await getname(path, dir)
@@ -365,7 +366,7 @@ async def nodebtn(conv, SENDER, path, msg, page, filelist):
         elif os.path.isfile(path+'/'+res):
             msg = await client.edit_message(msg, '脚本即将在后台运行')
             logger.info(path+'/'+res+'脚本即将在后台运行')
-            cmdtext = 'jd {}/{} now'.format(path, res)
+            cmdtext = 'js {} now'.format(res)
             subprocess.Popen(cmdtext, shell=True,
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             msg = await client.edit_message(msg, res + '在后台运行成功，请自行在程序结束后查看日志')
@@ -399,7 +400,7 @@ async def mylog(event):
 async def mysnode(event):
     '''定义supernode文件命令'''
     SENDER = event.sender_id
-    path = _ScriptsDir
+    path = _JdDir
     page = 0
     filelist = None
     async with client.conversation(SENDER, timeout=60) as conv:
@@ -432,9 +433,9 @@ async def myfile(event):
             async with client.conversation(SENDER, timeout=30) as conv:
                 msg = await conv.send_message('请选择您要放入的文件夹或操作：\n')
                 markup.append([Button.inline('放入config', data=_ConfigDir), Button.inline(
-                    '放入scripts', data=_ScriptsDir)])
+                    '放入scripts', data=_ScriptsDir), Button.inline('放入diyscripts', data=_DiyScripts)])
                 markup.append(
-                    [Button.inline('放入scripts并运行', data='node'), Button.inline('取消', data='cancel')])
+                    [Button.inline('放入diyscripts并运行', data='node'), Button.inline('取消', data='cancel')])
                 msg = await client.edit_message(msg, '请做出您的选择：', buttons=markup)
                 convdata = await conv.wait_event(press_event(SENDER))
                 res = bytes.decode(convdata.data)
@@ -442,12 +443,12 @@ async def myfile(event):
                     msg = await client.edit_message(msg, '对话已取消')
                     conv.cancel()
                 elif res == 'node':
-                    await backfile(_ScriptsDir+'/'+filename)
-                    await client.download_media(event.message, _ScriptsDir)
-                    cmdtext = 'jd {} now'.format(filename)
+                    await backfile(_DiyScripts+'/'+filename)
+                    await client.download_media(event.message, _DiyScripts)
+                    cmdtext = 'js {}/{} now'.format(_DiyScripts, filename)
                     subprocess.Popen(
                         cmdtext, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                    await client.edit_message(msg, '脚本已保存到Scripts文件夹，并成功在后台运行，请稍后自行查看日志')
+                    await client.edit_message(msg, '脚本已保存到DIYScripts文件夹，并成功在后台运行，请稍后自行查看日志')
                     conv.cancel()
                 else:
                     await backfile(res+'/'+filename)
@@ -590,7 +591,7 @@ async def mynode(event):
         '''
         await client.send_message(chat_id, res)
     else:
-        await cmd('node '+text[0].replace('/node ', '')+' now')
+        await cmd('js '+text[0].replace('/node ', '')+' now')
 
 
 @client.on(events.NewMessage(from_users=chat_id, pattern='/cmd'))
@@ -602,6 +603,8 @@ async def mycmd(event):
         if len(text) == 0:
             msg = '''请正确使用/cmd命令，如
             /cmd python3 /python/bot.py 运行/python目录下的bot文件
+            /cmd diy monk-coder dust i-chenzhe 拉取自定义仓库自定义目录
+            /cmd export_sharecodes 获取互助码
             /cmd ps 获取当前docker内进行
             '''
             await client.send_message(chat_id, msg)
@@ -685,7 +688,7 @@ async def setshortcut(event):
     SENDER = event.sender_id
     async with client.conversation(SENDER, timeout=60) as conv:
         await conv.send_message(
-            '60s内回复有效\n请按格式输入您的快捷命令。例如：\n京豆通知-->jd jd_bean_change\n更新脚本-->jup\n获取互助码-->jcode\nnode运行XX脚本-->node /XX/XX.js\nbash运行abc/123.sh脚本-->bash /abc/123.sh\n-->前边为要显示的名字，-->后边为要运行的命令\n 如添加运行脚本立即执行命令记得在后边添加now\n如不等待运行结果请添加nohup，如京豆通知-->nohup jd jd_bean_change now\n如不添加nohup 会等待程序执行完，期间不能交互\n建议运行时间短命令不添加nohup ')
+            '60s内回复有效\n请按格式输入您的快捷命令。例如：\n京豆通知-->js jd_bean_change\n更新脚本-->jup\n获取互助码-->jcode\nnode运行XX脚本-->node /XX/XX.js\nbash运行abc/123.sh脚本-->bash /abc/123.sh\n-->前边为要显示的名字，-->后边为要运行的命令\n 如添加运行脚本立即执行命令记得在后边添加now\n如不等待运行结果请添加nohup，如京豆通知-->nohup js jd_bean_change now\n如不添加nohup 会等待程序执行完，期间不能交互\n建议运行时间短命令不添加nohup ')
         shortcut = await conv.get_response()
         with open(_shortcut, 'w+', encoding='utf-8') as f:
             f.write(shortcut.raw_text)
@@ -762,7 +765,7 @@ async def mystart(event):
     /setshort 设置自定义按钮，每次设置会覆盖原设置
     /getcookie 扫码获取cookie 增加30s内取消按钮，30s后不能进行其他交互直到2分钟或获取到cookie
     /edit 从jd目录下选择文件编辑，需要将编辑好信息全部发给机器人，机器人会根据你发的信息进行替换。建议用来编辑config或crontab.list 其他文件慎用！！！
-    此外直接发送文件，会让您选择保存到哪个文件夹，如果选择运行`，将保存至own目录下，并立即运行脚本，crontab.list文件会自动更新时间'''
+    此外直接发送文件，会让您选择保存到哪个文件夹，如果选择运行，将保存至own目录下，并立即运行脚本，crontab.list文件会自动更新时间'''
     await client.send_message(chat_id, msg)
 
 with client:
